@@ -8,7 +8,7 @@ import sensor, image, time, math
 #0 for power cell
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 # The below thresholds track in general red/green/blue things. You may wish to tune them...
-thresholds = [(50, 90, -35, 35, 60, 95)]
+thresholds = [(45, 90, -35, 35, 60, 95)]
 #generic_yellow_ball_thresholds
 
 sensor.reset()
@@ -27,7 +27,7 @@ clock = time.clock()
 while(True):
     clock.tick()
     img = sensor.snapshot()
-    for blob in img.find_blobs(thresholds, pixels_threshold=200, area_threshold=200, merge=True):
+    for blob in img.find_blobs(thresholds, pixels_threshold=45, area_threshold=49, merge=True):
         # These values depend on the blob not being circular - otherwise they will be shaky.
         if blob.elongation() > 0.5:
             img.draw_edges(blob.min_corners(), color=(255,0,0))
