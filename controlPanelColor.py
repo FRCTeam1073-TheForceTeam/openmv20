@@ -1,9 +1,9 @@
 import sensor, image, time, math
 
 thresh = [(45, 70, 65, 90, 45, 75),       #red
-          (30, 80, -55, -30, 13, 35),     #green
-          (40, 60, 10, 35, -80, -50),      #blue
-          (55, 90, -25, 10, 55, 75)]      #yellow
+          (50, 80, -78, -40, 35, 60),     #green
+          (40, 75, -26, 5, -65, -35),     #blue
+          (75, 99, -28, -3, 80, 99)]        #yellow
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
@@ -53,25 +53,26 @@ def bubbleSort(blobs, compare):
             if compare(blobs[j], blobs[j+1]):
                 blobs[j], blobs[j+1] = blobs[j+1], blobs[j]
 
-def orderChooser(blobs, compare)
-    if blobs[0].code() == 1:    #red
-        print("order = RYBG")
+def orderChooser(blobs):
+    if len(blobs) >= 1:
+        if blobs[0].code() == 1:    #red
+            print("order = RYBG")
 
-    if blobs[1].code() == 2:    #green
-        print("order = GRYB")
+        if blobs[0].code() == 2:    #green
+            print("order = GRYB")
 
-    if blobs[2].code() == 4:    #blue
-        print("order = BGRY")
+        if blobs[0].code() == 4:    #blue
+            print("order = BGRY")
 
-    if blobs[3].code() == 8:    #yellow
-        print("order = YBGR")
+        if blobs[0].code() == 8:    #yellow
+            print("order = YBGR")
 
 
 
 while(True):
     print("///////")
     clock.tick()
-    img = sensor.snapshot().gamma_corr(gamma = 0.6, contrast = 1.6, brightness = 0.2)
+    img = sensor.snapshot().gamma_corr(gamma = 0.6, contrast = 1.6, brightness = -0.1)
     blobs = img.find_blobs(thresh, pixels_threshold=700, area_threshold=700)
     bubbleSort(blobs, compareBlobs)
 
