@@ -53,17 +53,17 @@ def bubbleSort(blobs, compare):
             if compare(blobs[j], blobs[j+1]):
                 blobs[j], blobs[j+1] = blobs[j+1], blobs[j]
 
-def orderChooser(blobs, compare)        #check with dad
-    if blobs[0].code() == 1:
+def orderChooser(blobs, compare)
+    if blobs[0].code() == 1:    #red
         print("order = RYBG")
 
-    if blobs[1].code() == 2:
+    if blobs[1].code() == 2:    #green
         print("order = GRYB")
 
-    if blobs[2].code() == 4:
+    if blobs[2].code() == 4:    #blue
         print("order = BGRY")
 
-    if blobs[3].code() == 8:
+    if blobs[3].code() == 8:    #yellow
         print("order = YBGR")
 
 
