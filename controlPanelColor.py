@@ -1,9 +1,9 @@
 import sensor, image, time, math
 
 thresh = [(45, 70, 65, 90, 45, 75),       #red
-          (50, 80, -78, -40, 35, 60),     #green
+          (45, 80, -78, -40, 25, 55),     #green
           (40, 75, -26, 5, -65, -35),     #blue
-          (75, 99, -28, -3, 80, 99)]        #yellow
+          (75, 99, -28, -3, 75, 99)]        #yellow
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
@@ -72,7 +72,7 @@ def orderChooser(blobs):
 while(True):
     print("///////")
     clock.tick()
-    img = sensor.snapshot().gamma_corr(gamma = 0.6, contrast = 1.6, brightness = -0.1)
+    img = sensor.snapshot().gamma_corr(gamma = 0.7, contrast = 1.6, brightness = 0.3)
     blobs = img.find_blobs(thresh, pixels_threshold=700, area_threshold=700)
     bubbleSort(blobs, compareBlobs)
 
