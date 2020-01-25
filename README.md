@@ -189,11 +189,11 @@ protocol can reutrn up to 6 lines at a time.
       = Byte 3: 24 bit hi  \
       = Byte 4: 24 bit mid = Two 12 bit #'s for X1,Y1
       = Byte 5: 24 bit low /
-      = Byte 6: Quality [0-100] %  0 = not active.
-      = byte 7: Type [ 0 - 15]
+      = Byte 6: Type [ 0 - 15]
       	     - 0 = White
 	     - 1 = Red
 	     - 2 = Blue
+      = Byte 7: Quality [0-100] %  0 = not active.
 - API Index 1: Segment 1 Data : OpenMV => Rio, Periodic
       = Same as Segment 0 Data
 - API Index 2: Segment 2 Data : OpenMV => Rio, Periodic
