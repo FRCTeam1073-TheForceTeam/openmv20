@@ -5,10 +5,10 @@
 import sensor, image, time, math
 
 
-#0 for power cell
-#Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
-#The below thresholds track in general red/green/blue things. You may wish to tune them...
-thresholds = [(28, 62, -6, 44, 41, 67)]
+#0 for yellow_ball or power_cell, it doesn't matter
+# Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
+# The below thresholds track in general red/green/blue things. You may wish to tune them...
+thresholds = [(45, 90, -35, 35, 60, 95)]
 #generic_yellow_ball_thresholds
 
 sensor.reset()
@@ -40,8 +40,8 @@ while(True):
             img.draw_line(blob.minor_axis_line(), color=(0,0,255))
         # These values are stable all the time.
         img.draw_rectangle(blob.rect())
-        #if blob.h*0.95 > blob.w and blob.h*1.05 < blob.w:
-            #continue
+        if blob.h*0.95 > blob.w and blob.h*1.05 < blob.w:
+            continue
         img.draw_cross(blob.cx(), blob.cy())
 
 
