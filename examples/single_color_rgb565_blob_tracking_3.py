@@ -20,13 +20,18 @@ sensor.set_auto_whitebal(False) # must be turned off for color tracking
 sensor.set_saturation(2)
 clock = time.clock()
 
-# Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
-# returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
-# camera resolution. "merge=True" merges all overlapping blobs in the image.
+#Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
+#returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
+#camera resolution. "merge=True" merges all overlapping blobs in the image.
 
 while(True):
     clock.tick()
+    blob_list = []
     img = sensor.snapshot()
+    #for blob in img.find_blobs(thresholds, pixels_threshold=45, area_threshold=49, merge=True):
+        #print(blob.convexity())
+        #if blob.convexity() <= 0.1:
+            #blob_list.append(blob)
     for blob in img.find_blobs(thresholds, pixels_threshold=45, area_threshold=49, merge=True):
         # These values depend on the blob not being circular - otherwise they will be shaky.
         if blob.elongation() > 0.5:
@@ -38,6 +43,9 @@ while(True):
         if blob.h*0.95 > blob.w and blob.h*1.05 < blob.w:
             continue
         img.draw_cross(blob.cx(), blob.cy())
+
+
+
         # Note - the blob rotation is unique to 0-180 only.
         img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
     print(clock.fps())
