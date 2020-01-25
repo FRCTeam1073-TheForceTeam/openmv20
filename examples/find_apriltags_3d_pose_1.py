@@ -1,58 +1,63 @@
-# AprilTags Example
+# Multi Color Blob Tracking Example
 #
-# This example shows the power of the OpenMV Cam to detect April Tags
-# on the OpenMV Cam M7. The M4 versions cannot detect April Tags.
+# This example shows off multi color blob tracking using the OpenMV Cam.
 
-import sensor, image, time, math
+import sensor, image, time, math, networktables
 
+# Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
+# The below thresholds track in general red/green things. You may wish to tune them...
+thresholds = [(74, 90, -16, 9, 38, 72), # generic_green_thresholds
+              (93, 100, -9, 3, -10, 17)] # generic_blue_thresholds
+# You may pass up to 16 thresholds above. However, it's not really possible to segment any
+# scene with 16 thresholds before color thresholds start to overlap heavily.
+sd = NetworkTables.getTable('SmartDashboard')
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QQVGA) # we run out of memory if the resolution is much bigger...
+sensor.set_framesize(sensor.QVGA)
 sensor.skip_frames(time = 2000)
-sensor.set_auto_gain(False)  # must turn this off to prevent image washout...
-sensor.set_auto_whitebal(False)  # must turn this off to prevent image washout...
+sensor.set_auto_gain(False) # must be turned off for color tracking
+sensor.set_auto_whitebal(False) # must be turned off for color tracking
 clock = time.clock()
 
+yellow_pixel_array = []
+white_pixel_array = []
 
-# Note! Unlike find_qrcodes the find_apriltags method does not need lens correction on the image to work.
-
-# What's the difference between tag families? Well, for example, the TAG16H5 family is effectively
-# a 4x4 square tag. So, this means it can be seen at a longer distance than a TAG36H11 tag which
-# is a 6x6 square tag. However, the lower H value (H5 versus H11) means that the false positve
-# rate for the 4x4 tag is much, much, much, higher than the 6x6 tag. So, unless you have a
-# reason to use the other tags families just use TAG36H11 which is the default family.
-
-# The AprilTags library outputs the pose information for tags. This is the x/y/z translation and
-# x/y/z rotation. The x/y/z rotation is in radians and can be converted to degrees. As for
-# translation the units are dimensionless and you must apply a conversion function.
-
-# f_x is the x focal length of the camera. It should be equal to the lens focal length in mm
-# divided by the x sensor size in mm times the number of pixels in the image.
-# The below values are for the OV7725 camera with a 2.8 mm lens.
-
-# f_y is the y focal length of the camera. It should be equal to the lens focal length in mm
-# divided by the y sensor size in mm times the number of pixels in the image.
-# The below values are for the OV7725 camera with a 2.8 mm lens.
-
-# c_x is the image x center position in pixels.
-# c_y is the image y center position in pixels.
-
-f_x = (2.8 / 3.984) * 160 # find_apriltags defaults to this if not set
-f_y = (2.8 / 2.952) * 120 # find_apriltags defaults to this if not set
-c_x = 160 * 0.5 # find_apriltags defaults to this if not set (the image.w * 0.5)
-c_y = 120 * 0.5 # find_apriltags defaults to this if not set (the image.h * 0.5)
-
-def degrees(radians):
-    return (180 * radians) / math.pi
+# Finds the distance from
+def distance_finder(blobData, img):
+    obj_height = 6.0
+    img_height_pixels = img.height()
+    blob_pixels = blobData.area()
+    camera_height = 8.5
+    dist_inches = (blob_pixels*camera_height)/(obj_height*img_height_pixels)
+    return dist_inches
+# Only blobs that with more pixels than "pixel_threshold" and more area than "area_threshold" are
+# returned by "find_blobs" below. Change "pixels_threshold" and "area_threshold" if you change the
+# camera resolution. Don't set "merge=True" becuase that will merge blobs which we don't want here.
 
 while(True):
     clock.tick()
     img = sensor.snapshot()
-    for tag in img.find_apriltags(fx=f_x, fy=f_y, cx=c_x, cy=c_y, families=image.TAG16H5): # defaults to TAG36H11
-        img.draw_rectangle(tag.rect(), color = (255, 0, 0))
-        img.draw_cross(tag.cx(), tag.cy(), color = (0, 255, 0))
-        print_args = (tag.x_translation(), tag.y_translation(), tag.z_translation(), \
-            degrees(tag.x_rotation()), degrees(tag.y_rotation()), degrees(tag.z_rotation()))
-        # Translation units are unknown. Rotation units are in degrees.
-        print("Tx: %f, Ty %f, Tz %f, Rx %f, Ry %f, Rz %f" % print_args)
+    for blob in img.find_blobs(thresholds, pixels_threshold=200, area_threshold=200):
+        # These values depend on the blob not being circular - otherwise they will be shaky.
+
+        if blob.elongation() > 0.5:
+            #if aspect ratio is high, then red and green lines are drawn
+            img.draw_edges(blob.min_corners(), color=(255,0,0))
+            img.draw_line(blob.major_axis_line(), color=(0,255,0))
+            img.draw_line(blob.minor_axis_line(), color=(0,0,255))
+        #normal rectangle around blob
+        img.draw_rectangle(blob.rect())
+        img.draw_cross(blob.cx(), blob.cy())
+        pixelDist = distance_finder(blob, img)
+        print("dist: ")
+        print(pixelDist)
+        sd.setNumber(pixelDist)
+
+        #tuple append_tuple = (blob.cx(), blob.cy())
+        #if blob.code() == 0:
+
+        #if blob.code() == 1:
+
+        # Note - the blob rotation is unique to 0-180 only.
+        img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
     print(clock.fps())
