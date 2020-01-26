@@ -9,7 +9,7 @@ import omv
 # This class uses FIFO 1 for callbacks in the API Class = 1
 # space for mode control. FIFO 0 is used for other messages.
 class frcCAN:
-    
+
     def __init__(self, devid):
         self.can = CAN(2, CAN.NORMAL)
         self.devid = devid
@@ -18,6 +18,7 @@ class frcCAN:
         self.config_line_segments = 0
         self.config_color_detect = 0
         self.config_advanced_targets = 0
+        self.frame_counter = 0
 
         if omv.baord_type() == "H7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=4,  sjw=1, bs1=8, bs2=3) # 1000Kbps H7
@@ -25,9 +26,9 @@ class frcCAN:
         elif omv.board_type() == "M7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=3,  sjw=1, bs1=10, bs2=7)  # 1000Kbps on M7
 
-        self.can.initfilterbanks(10)
-        self.can.setfilter(0, CAN.LIST32, 1, [0x00, 0x00])
-        self.can.setfilter(1, CAN.LIST32, 1, [0x00, 0x00])
+        # self.can.initfilterbanks(10)
+        # self.can.setfilter(0, CAN.LIST32, 1, [0x00, 0x00])
+        # self.can.setfilter(1, CAN.LIST32, 1, [0x00, 0x00])
         self.can.restart()
 
     # Set capability/config:
@@ -36,7 +37,11 @@ class frcCAN:
         self.config_line_segments = line_segments
         self.config_color_detect = color_detect
         self.config_advanced_targets = advanced_targets
-        
+
+    # Update counter:
+    def update_frame_counter():
+        self.counter = self.counter + 1
+
 
     # Arbitration ID helper:
     def arbitration_id(devtype, mfr, devid, apiid):
@@ -67,6 +72,7 @@ class frcCAN:
         try:
             self.can.send(bytes, sendid, timeout=33)
         except:
+            print("CAN exception.")
             self.can.restart()
 
     # API Class - 1:  Configuration
@@ -87,11 +93,11 @@ class frcCAN:
         send(api_id(1,0), mb)
 
     # Send the RIO the heartbeat message:
-    def send_heartbeat(counter):
+    def send_heartbeat():
         hb = bytearray(3)
         hb[0] = (self.mode & 0xff)
-        hb[1] = (counter & 0xff00) >> 8
-        hb[2] = (counter & 0x00ff)
+        hb[1] = (self.counter & 0xff00) >> 8
+        hb[2] = (self.counter & 0x00ff)
         send(api_id(1,2), hb)
 
     # API Class - 2: Simple Target Tracking
@@ -116,7 +122,7 @@ class frcCAN:
 
 
     # Line Segment Tracking API Class: 3
-    
+
     # Send line segment data to a slot.
     def send_line_data(slot, x0, y0, x1, y1, type, qual):
         ldb = bytearray(8)
@@ -154,7 +160,7 @@ class frcCAN:
         send(api_id(4,0), cdb)
 
     # Advanced Target Tracking API Class: 5
-    
+
     def send_advanced_track_data(cx, cy, vx, vy, type, qual, skew):
         atb = bytearray(8)
         atb[0] = (cx & 0xff0) >> 4
