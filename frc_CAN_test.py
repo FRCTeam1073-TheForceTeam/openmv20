@@ -243,5 +243,6 @@ while(True):
     img = sensor.snapshot()
 
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
+    can.send_advanced_track_data(100, 100, 127, -127, 5, 10, 4)
     pyb.delay(100)
-    print("HB %d", can.get_frame_counter())
+    print("HB %d" % can.get_frame_counter())
