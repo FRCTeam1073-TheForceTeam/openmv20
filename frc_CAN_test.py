@@ -246,3 +246,6 @@ while(True):
     can.send_advanced_track_data(100, 100, 127, -127, 5, 10, 4)
     pyb.delay(100)
     print("HB %d" % can.get_frame_counter())
+
+
+# add requirements to be able to send to the main turret command
