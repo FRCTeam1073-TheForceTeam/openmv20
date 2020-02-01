@@ -37,8 +37,8 @@ class frcCAN:
         if omv.board_type() == "H7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=4,  sjw=1, bs1=8, bs2=3) # 1000Kbps H7
             self.can.initfilterbanks(10)
-            # Filter 0 sends messages to FIFO 1
-            self.can.setfilter(0, CAN.RANGE, 1, [self.my_arb_id(self.api_id(1,1)),self.my_arb_id(self.api_id(1,1))])
+            # Filter 0 sends messages to FIFO 1 for mode messages.
+            self.can.setfilter(0, CAN.RANGE, 1, [self.my_arb_id(self.api_id(1,3)),self.my_arb_id(self.api_id(1,3))])
             print("H7 CAN Interface")
 
         elif omv.board_type() == "M7":
@@ -118,12 +118,19 @@ class frcCAN:
         cb[5] = self.config_advanced_targets
         self.send(self.api_id(1,0), cb)
 
+    # Send our camera status data to RoboRio
+    def send_camera_status(self, width, height):
+        cb=bytearray(8)
+        cb[0] = width/4;
+        cb[1] = height/4;
+        self.send(self.api_id(1,1), cb)
+
     # Called by filter when FIFO 1 gets a message.
     def incoming_callback_1(can, reason):
         can.recv(1, self.cbdata, timeout=10)
 
         if reason == 0 or reason == 1:
-            if self.cbdata[0] == self.my_arb_id(self.api_id(1,1)):
+            if self.cbdata[0] == self.my_arb_id(self.api_id(1,3)):
                 # Set our mode from the incoming data:
                 self.mode = self.cbdata[3][0]
             elif self.cbdata[0] == self.my_arb_id(self.api_id(1,0)):
