@@ -124,13 +124,23 @@ the sensor. Each API Index is defined below:
       = Byte 6 : Reserved = 0
       = Byte 7 : Reserved = 0
 
-- API Index 1 : Mode Control: Rio => OpenMV
-      = Byte 0 : Mode: Set mode to this value.
+- API Index 1 : Camera Status: OpenMV => Rio
+      = Byte 0 : Image Width / 4
+      = Byte 1 : Image Height / 4
+      = Byte 2 : Reserved = 0
+      = Byte 3 : Reserved = 0
+      = Byte 4 : Reserved = 0
+      = Byte 5 : Reserved = 0
+      = Byte 6 : Reserved = 0
+      = Byte 7 : Reserved = 0
 
 - API Index 2 : Heartbeat: OpenMV => Rio periodically sent ~ 1/second
       = Byte 0 : Status : As above.
       = Byte 1 : Frame counter high byte. 16-bit unsigned.
       = Byte 2 : Frame counter low byte.
+
+- API Index 3 : Mode Control: Rio => OpenMV
+      = Byte 0 : Mode: Set mode to this value.
 
 ## Simple Target Tracking API Class: API Class = 2
 
