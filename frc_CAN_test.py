@@ -12,6 +12,21 @@ import sensor, image, time, pyb
 from pyb import CAN
 import omv
 
+canbuffer = bytearray(8)
+candata = [0, 0, 0, memoryview(canbuffer)]
+
+def test_callback(can, reason):
+    if reason != None:
+        print("CAN Message FIFO 0 REASON %d" % reason)
+    else:
+        print("CAN FIFO 0 CB: None REASON")
+
+    if can == None:
+        print("CAN FIFO 0 CB: None CAN")
+
+    can.recv(0, candata, timeout=10)
+    print("ARBID %d"%candata[0])
+
 # Puts all the CAN support for FRC into one reusable place.
 # This class uses FIFO 1 for callbacks in the API Class = 1
 # space for mode control. FIFO 0 is used for other messages.
@@ -30,20 +45,22 @@ class frcCAN:
         self.config_advanced_targets = 0
         self.frame_counter = 0
         # Buffer for receiving data in our callback.
-        self.cbbuffer = bytearray(8)
-        self.cbdata = [0, 0, 0, memoryview(self.cbbuffer)]
+        self.read_buffer = bytearray(8)
+        self.read_data = [0, 0, 0, memoryview(self.read_buffer)]
 
         # Initialize CAN based on which type of board we're on
         if omv.board_type() == "H7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=4,  sjw=1, bs1=8, bs2=3) # 1000Kbps H7
             #self.can.initfilterbanks(10)
-            # Filter 0 sends messages to FIFO 1 for mode messages.
-            self.can.setfilter(0, CAN.MASK, 1, [self.my_arb_id(self.api_id(1,3)), self.my_arb_id(self.api_id(1,3))])
-            self.can.rxcallback(1, self.incoming_callback_1)
+            # Filter 0 sends messages to FIFO 0 for mode messages.
+            self.can.setfilter(0, CAN.MASK, 0, [self.my_arb_id(self.api_id(1,3)), self.my_arb_id(self.api_id(1,3))])
+            # self.can.rxcallback(0, test_callback)
             print("H7 CAN Interface")
         elif omv.board_type() == "M7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=3,  sjw=1, bs1=10, bs2=7) # 1000Kbps on M7
             #self.can.initfilterbanks(10)
+            self.can.setfilter(0, CAN.LIST32, 0, [self.my_arb_id(self.api_id(1,3)), self.my_arb_id(self.api_id(1,4))])
+            # self.can.rxcallback(0, test_callback)
             print("M7 CAN Interface")
         else:
             print("CAN INTERFACE NOT INITIALIZED!")
@@ -107,6 +124,18 @@ class frcCAN:
     def get_mode(self):
         return self.mode
 
+    # Called by filter when FIFO 0 gets a message.
+    def incoming_callback_0(can, reason):
+        if reason:
+            print("CAN Message FIFO 0 REASON %d" % reason)
+        else:
+            print("CAN FIFO 0 CB: NULL REASON")
+
+        message = can.recv(0, list = None, timeout=10)
+
+        print("ARBID %d"%message[0])
+
+
     # Send our Config data to RoboRio
     def send_config_data(self):
         cb = bytearray(8)
@@ -119,26 +148,23 @@ class frcCAN:
 
     # Send our camera status data to RoboRio
     def send_camera_status(self, width, height):
-        cb=bytearray(8)
+        cb = bytearray(8)
         cb[0] = int(width/4);
         cb[1] = int(height/4);
         self.send(self.api_id(1,1), cb)
 
-    # Called by filter when FIFO 1 gets a message.
-    def incoming_callback_1(can, reason):
-        print("CAN Message!")
-        can.recv(1, self.cbdata, timeout=10)
 
-        if reason == 0 or reason == 1:
-            if self.cbdata[0] == self.my_arb_id(self.api_id(1,3)):
-                # Set our mode from the incoming data:
-                self.mode = self.cbdata[3][0]
+    # Called to update mode if it is changed.
+    def check_mode(self):
+        try:
+            self.can.recv(0, self.read_data, timeout=10)
+            if self.read_data[0] == self.my_arb_id(self.api_id(1,3)):
+                self.mode = self.read_data[3][0]
                 print("GOT MODE: %d" % self.mode)
-            elif self.cbdata[0] == self.my_arb_id(self.api_id(1,0)):
-                # Respond with configuration:
-                self.send_config_data()
-        else:
-            print("CAN FIFO message lost.")
+            return True
+        except:
+            return False
+
 
 
     # Send the RIO the heartbeat message with our mode and frame counter:
@@ -260,4 +286,5 @@ while(True):
 
     pyb.delay(100)
     print("HB %d" % can.get_frame_counter())
+    can.check_mode();
     loopCounter = loopCounter + 1
