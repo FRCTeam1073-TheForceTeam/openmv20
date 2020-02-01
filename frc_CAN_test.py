@@ -29,25 +29,24 @@ class frcCAN:
         self.config_color_detect = 0
         self.config_advanced_targets = 0
         self.frame_counter = 0
-        # Buffer for receiving data
+        # Buffer for receiving data in our callback.
         self.cbbuffer = bytearray(8)
         self.cbdata = [0, 0, 0, memoryview(self.cbbuffer)]
 
         # Initialize CAN based on which type of board we're on
         if omv.board_type() == "H7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=4,  sjw=1, bs1=8, bs2=3) # 1000Kbps H7
-            self.can.initfilterbanks(10)
+            #self.can.initfilterbanks(10)
             # Filter 0 sends messages to FIFO 1 for mode messages.
-            self.can.setfilter(0, CAN.RANGE, 1, [self.my_arb_id(self.api_id(1,3)),self.my_arb_id(self.api_id(1,3))])
+            self.can.setfilter(0, CAN.MASK, 1, [self.my_arb_id(self.api_id(1,3)), self.my_arb_id(self.api_id(1,3))])
+            self.can.rxcallback(1, self.incoming_callback_1)
             print("H7 CAN Interface")
-
         elif omv.board_type() == "M7":
             self.can.init(CAN.NORMAL, extframe=True, prescaler=3,  sjw=1, bs1=10, bs2=7) # 1000Kbps on M7
-            self.can.initfilterbanks(10)
+            #self.can.initfilterbanks(10)
             print("M7 CAN Interface")
         else:
             print("CAN INTERFACE NOT INITIALIZED!")
-
 
         self.can.restart()
 
@@ -121,18 +120,20 @@ class frcCAN:
     # Send our camera status data to RoboRio
     def send_camera_status(self, width, height):
         cb=bytearray(8)
-        cb[0] = width/4;
-        cb[1] = height/4;
+        cb[0] = int(width/4);
+        cb[1] = int(height/4);
         self.send(self.api_id(1,1), cb)
 
     # Called by filter when FIFO 1 gets a message.
     def incoming_callback_1(can, reason):
+        print("CAN Message!")
         can.recv(1, self.cbdata, timeout=10)
 
         if reason == 0 or reason == 1:
             if self.cbdata[0] == self.my_arb_id(self.api_id(1,3)):
                 # Set our mode from the incoming data:
                 self.mode = self.cbdata[3][0]
+                print("GOT MODE: %d" % self.mode)
             elif self.cbdata[0] == self.my_arb_id(self.api_id(1,0)):
                 # Respond with configuration:
                 self.send_config_data()
@@ -245,11 +246,19 @@ can.set_config(1, 0, 0, 0)
 # Set the mode for our OpenMV frcCAN device.
 can.set_mode(1)
 
+loopCounter = 0;
 while(True):
     can.update_frame_counter() # Update the frame counter.
     img = sensor.snapshot()
 
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
     can.send_advanced_track_data(100, 100, 127, -127, 5, 10, 4)
+
+    # Occasionally send config data and camera status:
+    if loopCounter % 50 == 0:
+        can.send_config_data()
+        can.send_camera_status(320, 240)
+
     pyb.delay(100)
     print("HB %d" % can.get_frame_counter())
+    loopCounter = loopCounter + 1
