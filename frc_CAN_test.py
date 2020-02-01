@@ -141,7 +141,6 @@ class frcCAN:
             print("CAN FIFO message lost.")
 
 
-
     # Send the RIO the heartbeat message with our mode and frame counter:
     def send_heartbeat(self):
         hb = bytearray(3)
