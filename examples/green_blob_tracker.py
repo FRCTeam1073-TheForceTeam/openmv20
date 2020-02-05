@@ -24,35 +24,8 @@ clock = time.clock()
 red_led  = pyb.LED(1)
 green_led = pyb.LED(2)
 
-def arbitration_id(devtype, mfr, devid, apiid):
-    retval = (devtype & 0x1f) << 24
-    retval = retval | (mfr & 0xff) << 16
-    retval = retval | (apiid & 0x3ff) << 6
-    retval = retval | (devid & 0x3f)
-    return retval
-
 def findLength(blobData):
     return math.sqrt(math.pow(blobData[0] - blobData[2], 2) + math.pow(blobData[1] - blobData[3], 2))
-
-# CAN setup
-#can = CAN(2, CAN.NORMAL)
-#can.init(CAN.NORMAL, extframe=True, prescaler=4,  sjw=1, bs1=8, bs2=3) # 1000Kbps H7
-#range_lo = arbitration_id(12,170,3,5)
-#range_hi = arbitration_id(12,170,3,10)
-#print("ARB_LO 0x%X"%range_lo)
-#print("ARB_HI 0x%X"%range_hi)
-
-#can.setfilter(0, CAN.RANGE, 0, (range_lo, range_hi))
-#can.restart()
-
-#data1 = bytearray(b'HelloRio')
-#data2 = bytearray(b'Infinite')
-#counter = 0
-
-#canbuf = bytearray(8)
-#canlist = [0,0,0,memoryview(canbuf)]
-
-#mysendid = arbitration_id(12, 170, 3, 4)
 
 while(True):
     numBlobs = 0
