@@ -178,14 +178,14 @@ class frcCAN:
     # API Class - 2: Simple Target Tracking
 
     # Send tracking data for a given tracking slot to RoboRio.
-    def send_track_data(self, slot, cx, cy, vx, vy, type, qual):
+    def send_track_data(self, slot, cx, cy, vx, vy, ttype, qual):
         tdb = bytearray(7)
         tdb[0] = (cx & 0xff0) >> 4
         tdb[1] = (cx & 0x00f) << 4 | (cy & 0xf00) >> 8
         tdb[2] = (cy & 0x0ff)
         tdb[3] = (vx & 0xff)
         tdb[4] = (vy & 0xff)
-        tdb[5] = (type & 0xff)
+        tdb[5] = (ttype & 0xff)
         tdb[6] = (qual & 0xff)
         self.send(self.api_id(2, slot), tdb)
 
@@ -239,13 +239,13 @@ class frcCAN:
     # Advanced Target Tracking API Class: 5
 
     # Send advanced target tracking data to RoboRio
-    def send_advanced_track_data(self, cx, cy, vx, vy, ttype, qual, skew):
+    def send_advanced_track_data(self, cx, cy, area, ttype, qual, skew):
         atb = bytearray(8)
         atb[0] = (cx & 0xff0) >> 4
         atb[1] = ((cx & 0x00f) << 4) | ((cy & 0xf00) >> 8)
         atb[2] = (cy & 0x0ff)
-        atb[3] = (vx & 0xff)
-        atb[4] = (vy & 0xff)
+        atb[3] = (area & 0xff00) >> 8
+        atb[4] = (area & 0x00ff)
         atb[5] = (ttype & 0xff)
         atb[6] = (qual & 0xff)
         atb[7] = (skew & 0xff)
@@ -271,20 +271,18 @@ can.set_config(1, 0, 0, 0)
 # Set the mode for our OpenMV frcCAN device.
 can.set_mode(1)
 
-loopCounter = 0;
 while(True):
     can.update_frame_counter() # Update the frame counter.
     img = sensor.snapshot()
 
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
-    can.send_advanced_track_data(100, 100, 127, -127, 5, 10, 4)
+    can.send_advanced_track_data(310, 100, 1099, 5, 77, 0)
 
     # Occasionally send config data and camera status:
-    if loopCounter % 50 == 0:
+    if can.get_frame_counter() % 50 == 0:
         can.send_config_data()
         can.send_camera_status(320, 240)
 
     pyb.delay(100)
     print("HB %d" % can.get_frame_counter())
     can.check_mode();
-    loopCounter = loopCounter + 1
