@@ -1,22 +1,32 @@
+# Blob tracker for the green LED ring for turret use
+
 import sensor, image, time, math, pyb
-import omv
 from pyb import CAN
+import omv
 
-thresh = [(45, 70, 65, 90, 45, 75),       #red
-          (45, 90, -78, -40, 15, 55),     #green
-          (80, 95, -52, -30, -25, -15),     #blue
-          (65, 99, -28, -3, 75, 99)]      #yellow
+threshold_index = 2
 
+# Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
+thresholds = [(85, 95, -55, -40, -20, 10), # specific_green_threshold @ 900 exposure & 9 volts
+             (15, 95, -40, 0, -10, 40),
+             (50, 95, -80, -30, -10, 50)]
+
+# Camera settings
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
-sensor.skip_frames(time = 2500)
+sensor.skip_frames(time = 2000)
+sensor.set_auto_exposure(False, 900)
 sensor.set_auto_gain(False)
 sensor.set_auto_whitebal(False)
-sensor.set_auto_exposure(False)
-sensor.set_saturation(2)
-sensor.set_brightness(-2)
 clock = time.clock()
+
+# LEDs for determining blob status
+red_led  = pyb.LED(1)
+green_led = pyb.LED(2)
+canbuffer = bytearray(8)
+candata = [0, 0, 0, memoryview(canbuffer)]
+
 
 class frcCAN:
 
@@ -244,85 +254,51 @@ class frcCAN:
         atb = bytearray(8)
         self.send(self.api_id(5, 1), atb)
 
+# end of class
 
-def findColors(blob):
-    if blob.code() == 1:        #red
-        img.draw_rectangle(blob.rect(), color=(250, 0, 0))
-        img.draw_cross(blob.cx(), blob.cy())
-        return 2
+def findLength(blobData):
+    return math.sqrt(math.pow(blobData[0] - blobData[2], 2) + math.pow(blobData[1] - blobData[3], 2))
 
-    if blob.code() == 2:        #green
-        img.draw_rectangle(blob.rect(), color=(0, 250, 0))
-        img.draw_cross(blob.cx(), blob.cy())
-        return 4
-
-    if blob.code() == 4:        #blue
-        img.draw_rectangle(blob.rect(), color=(0, 0, 250))
-        img.draw_cross(blob.cx(), blob.cy())
-        return 5
-
-    if blob.code() == 8:         #yellow
-        img.draw_rectangle(blob.rect(), color=(100, 100, 0))
-        img.draw_cross(blob.cx(), blob.cy())
-        return 3
-
-
-def compareBlobs(blob1, blob2):
-    if blob1.cx() > blob2.cx():
-        return True
-    else:
-        return False
-
-
-def bubbleSort(blobs, compare):
-    n = len(blobs)
-    for i in range(n):
-        for j in range (0, n-i-1):
-            if compare(blobs[j], blobs[j+1]):
-                blobs[j], blobs[j+1] = blobs[j+1], blobs[j]
-
-def findPercentLocation(blob):
-    position = int((blob.cx()/img.width()) * 100.0)
-    return position
-
-# Creatae our frcCAN object for interfacing with RoboRio over CAN
-can = frcCAN(10)
+can = frcCAN(1)
 
 # Set the configuration for our OpenMV frcCAN device.
-can.set_config(0, 0, 1, 0)
+can.set_config(1, 0, 0, 0)
 # Set the mode for our OpenMV frcCAN device.
 can.set_mode(1)
 
+#---------MAIN LOOP-------------
 while(True):
     can.update_frame_counter() # Update the frame counter.
+    img = sensor.snapshot()
+    foundBlob = None
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
+    blobs = img.find_blobs([thresholds[threshold_index]], pixels_threshold=100, area_threshold=500, merge=True)
 
-    img = sensor.snapshot().gamma_corr(gamma = 0.7, contrast = 1.6, brightness = 0.1)
-    blobs = img.find_blobs(thresh, pixels_threshold=700, area_threshold=700)
-    bubbleSort(blobs, compareBlobs)
+    for blob in blobs:
+        # print(findLength(blob.minor_axis_line())) = 90
+        # print(findLength(blob.major_axis_line())) = 185
+        #if findLength(blob.minor_axis_line()) > findLength(blob.major_axis_line())/3 and findLength(blob.minor_axis_line()) < findLength(blob.major_axis_line())/1.8:
+        foundBlob = blob
+        target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
+        target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
+        img.draw_circle(target_x, target_y, 5)
+        img.draw_rectangle(blob.rect())
 
-    #setting up a shell to return a list, with data for 0-4 blobs
-    outputs = [(0, 0), (0, 0), (0, 0), (0, 0)]
+# this finds the LAST blob, not the BEST blob. Need to update that in the future
 
-    #assigns a max # of blobs (4)
-    slots = len(blobs)
-    if slots > 4:
-        slots = 4
+    if foundBlob:
+        can.send_advanced_track_data(foundBlob.cx(), foundBlob.cy(), foundBlob.area(), 1, 100, 0)
+    else:
+        can.clear_advanced_track_data()     # VERY IMPORTANT TO CLEAR AND UPDATE RIO DATA
 
-
-    #for each of the 4(max) blobs, computes the color and percent ocation horizontally
-    for i in range(0, slots):
-        outputs[i] = (findColors(blobs[i]), findPercentLocation(blobs[i]))
-
-    #sending data based on # of blobs (0 blobs being empty and 4 being completely filled)
-    can.send_color_data(outputs[0][0], outputs[0][1], outputs[1][0], outputs[1][1], outputs[2][0],
-        outputs[2][1], outputs[3][0], outputs[3][1])
-
-    # Send config data and camera status:
+    # Occasionally send config data and camera status:
     if can.get_frame_counter() % 100 == 0:
         can.send_config_data()
         can.send_camera_status(sensor.width(), sensor.height())
 
     pyb.delay(50)
     print("HB %d" % can.get_frame_counter())
-    can.check_mode()
+    can.check_mode();
+
+
+
