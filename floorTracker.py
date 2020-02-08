@@ -2,7 +2,8 @@ import sensor, image, time, math, pyb
 import omv
 from pyb import CAN
 
-thresh = (65, 99, -28, -3, 45, 85)
+thresh1 = (65, 99, -28, -3, 45, 85)
+thresh2 = (65, 99, -5, 5, -5, 5)
 
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
@@ -238,31 +239,11 @@ class frcCAN:
         atb = bytearray(8)
         self.send(self.api_id(5, 1), atb)
 
-# Test Program Main --------------------------------------------------
-
-sensor.reset()
-sensor.set_pixformat(sensor.RGB565)
-sensor.set_framesize(sensor.QVGA)
-sensor.skip_frames(time = 2500)
-
-# Creatae our frcCAN object for interfacing with RoboRio over CAN
-can = frcCAN(9)
-
-# Set the configuration for our OpenMV frcCAN device.
-can.set_config(1, 0, 0, 0)
-# Set the mode for our OpenMV frcCAN device.
-can.set_mode(1)
-
-while(True):
-    can.update_frame_counter() # Update the frame counter.
-
-    can.send_heartbeat()       # Send the heartbeat message to the RoboRio
-
-    img = sensor.snapshot().gamma_corr(gamma = 0.7, contrast = 1.6, brightness = 0.1)
-    blobs = []  #filled out in filter loop
-
+# POWER CELL TRACKING
+def trackPowerCells(can, img):
+    blobs = []
     #filtering the blobs to fit our restraints in size
-    for blob in img.find_blobs([thresh], pixels_threshold=350, area_threshold=400):
+    for blob in img.find_blobs([thresh1], pixels_threshold=350, area_threshold=400):
         if blob.elongation() < 0.5:
             img.draw_rectangle(blob.rect())
             img.draw_cross(blob.cx(), blob.cy())
@@ -277,7 +258,56 @@ while(True):
     #printing data for blob[i]
     for i in range(0, slots):
         # i = the blob in a given slot, slot being 0-6
-        can.send_track_data(i, 104, 69, 77, -77, 5, 0)
+        can.send_track_data(i, blobs[i].cx(), blobs[i].cy(), 0, 0, 1, 100)
+
+    for j in range(slots, 6):
+        can.clear_track_data(j)
+
+# LINE TRACKING
+def trackLines(can, img):
+    lines = []
+    #filtering the blobs to fit our restraints in size
+    for blob in img.find_blobs([thresh2], pixels_threshold=350, area_threshold=400):
+        img.draw_rectangle(blob.rect())
+        line = img.get_regression([thresh2], roi=blob.rect(), area_threshold=10,
+            pixels_threshold=30, robust=True)
+        lines.append(line)  #only add to list if passing our filter
+
+    #limiting list side to match API and interface definition
+    slots = len(lines)
+    if slots > 6:
+        slots = 6
+
+    #printing data for blob[i]
+    for i in range(0, slots):
+        # i = the blob in a given slot, slot being 0-6
+        can.send_line_data(i, lines[i].x1(), lines[i].y1(), lines[i].x2(), lines[i].y2(), 2, 100)
+
+    for j in range(slots, 6):
+        can.clear_track_data(j)
+
+# Test Program Main --------------------------------------------------
+
+sensor.reset()
+sensor.set_pixformat(sensor.RGB565)
+sensor.set_framesize(sensor.QVGA)
+sensor.skip_frames(time = 2500)
+
+# Creatae our frcCAN object for interfacing with RoboRio over CAN
+can = frcCAN(9)
+
+# Set the configuration for our OpenMV frcCAN device.
+can.set_config(6, 6, 0, 0)
+# Set the mode for our OpenMV frcCAN device.
+can.set_mode(1)
+
+while(True):
+    can.update_frame_counter() # Update the frame counter.
+    can.send_heartbeat()       # Send the heartbeat message to the RoboRio
+    img = sensor.snapshot().gamma_corr(gamma = 0.7, contrast = 1.6, brightness = 0.1)
+
+    trackPowerCells(can, img)
+    trackLines(can, img)
 
     # Occasionally send config data and camera status:
     if can.get_frame_counter() % 100 == 0:
