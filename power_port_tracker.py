@@ -259,7 +259,7 @@ class frcCAN:
 def findLength(blobData):
     return math.sqrt(math.pow(blobData[0] - blobData[2], 2) + math.pow(blobData[1] - blobData[3], 2))
 
-can = frcCAN(1)
+can = frcCAN(8)
 
 # Set the configuration for our OpenMV frcCAN device.
 can.set_config(1, 0, 0, 0)
