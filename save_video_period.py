@@ -23,8 +23,13 @@ sensor.skip_frames(time = 2000) # Give the user time to get ready.
 
 pyb.LED(RED_LED_PIN).off()
 pyb.LED(BLUE_LED_PIN).on()
+sensor.skip_frames(time = 2000) # Give the user time to get ready.
+
 
 while(True):
+    pyb.LED(RED_LED_PIN).off()
+    pyb.LED(BLUE_LED_PIN).on()
+
     found = True
     i = 0
     while(found):
@@ -42,4 +47,6 @@ while(True):
         m.add_frame(sensor.snapshot())
         print(clock.fps())
 
+    pyb.LED(RED_LED_PIN).on()
+    pyb.LED(BLUE_LED_PIN).off()
     m.close(clock.fps())
