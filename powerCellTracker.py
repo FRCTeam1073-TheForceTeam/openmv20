@@ -11,6 +11,15 @@ sensor.set_auto_whitebal(False)
 clock = time.clock()
 
 
+def list_creator(path):
+    frame_list=[]
+    video = image.ImageReader(path);
+    while(video.next_frame([copy_to_fb=True[, loop=False]]) != None):
+       frame_list.append(video.next_frame([copy_to_fb=True[, loop=False]]))
+       return frame_list
+
+list_creator('Week0Videos/GOODMatch0.mjpeg')
+
 while(True):
     img = sensor.snapshot()
     for blob in img.find_blobs(thresh, pixels_threshold=350, area_threshold=400):
