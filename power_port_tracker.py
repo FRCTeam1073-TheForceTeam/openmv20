@@ -4,12 +4,11 @@ import sensor, image, time, math, pyb
 from pyb import CAN
 import omv
 
-threshold_index = 2
+threshold_index = 1
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
-thresholds = [(85, 95, -55, -40, -20, 10), # specific_green_threshold @ 900 exposure & 9 volts
-             (15, 95, -40, 0, -10, 40),
-             (50, 95, -80, -30, -10, 50)]
+thresholds = [(45, 70, 65, 90, 45, 75), # To be tested RED
+             (50, 95, -80, -30, -10, 50)]# specific_green_threshold @ 900 exposure & 9 volts
 
 # Camera settings
 sensor.reset()
