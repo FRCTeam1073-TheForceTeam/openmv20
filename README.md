@@ -259,7 +259,6 @@ tracking interface but tracks fewer targets and offers illumination
 control. When the target is returned as quality = 0, there is no
 target.
 
-
 - API Index 0: Advanced Target Tracking API Control: Rio => OpenMV
       - Byte 0: [0 - 100] % Illumination Power
       - Byte 1: [0 - 127] Illumination Hue
@@ -273,6 +272,8 @@ target.
       - Byte 5: Type 0-15
       - Byte 6: Quality [0 - 100] %  0 = not active.
       - Byte 7: Skew +- 127 skewness of target. 0 = perpendicular.
+
+Type 0 = green.   Type 1 = red.   Type 2 = blue.
 
 The pixel coordinates are 2 x 12-bit numbers packed into 3 bytes as
 follows:
