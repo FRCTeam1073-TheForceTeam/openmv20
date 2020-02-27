@@ -274,6 +274,10 @@ target.
       - Byte 6: Quality [0 - 100] %  0 = not active.
       - Byte 7: Skew +- 127 skewness of target. 0 = perpendicular.
 
+Type 1 = green
+Type 2 = red
+Type 3 = blue
+
 The pixel coordinates are 2 x 12-bit numbers packed into 3 bytes as
 follows:
 

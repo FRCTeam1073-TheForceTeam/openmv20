@@ -4,7 +4,8 @@ import sensor, image, time, math, pyb
 from pyb import CAN
 import omv
 
-threshold_index = 1
+threshold_green = 1
+threshold_red = 0
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 thresholds = [(45, 70, 65, 90, 45, 75), # To be tested RED
@@ -15,8 +16,8 @@ sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.skip_frames(time = 2000)
-sensor.set_auto_exposure(False, 900)
-sensor.set_auto_gain(False)
+sensor.set_auto_exposure(False, 5000) # 5ms exposure
+sensor.set_auto_gain(False, gain_db_ceiling=3)
 sensor.set_auto_whitebal(False)
 clock = time.clock()
 
@@ -236,6 +237,7 @@ class frcCAN:
     # Advanced Target Tracking API Class: 5
 
     # Send advanced target tracking data to RoboRio
+    # type 1 = green    type 2 = red    type 3 = blue
     def send_advanced_track_data(self, cx, cy, area, ttype, qual, skew):
         atb = bytearray(8)
         atb[0] = (cx & 0xff0) >> 4
@@ -271,13 +273,21 @@ while(True):
     img = sensor.snapshot()
     foundBlob = None
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
-    blobs = img.find_blobs([thresholds[threshold_index]], pixels_threshold=100, area_threshold=500, merge=True)
+    Gblobs = img.find_blobs([thresholds[threshold_green]], pixels_threshold=100, area_threshold=500, merge=True)
+    Rblobs = img.find_blobs([thresholds[threshold_red]], pixels_threshold=100, area_threshold=500, merge=True)
 
-    for blob in blobs:
+    for blob in Gblobs:
+        foundBlobG = blob
+        target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
+        target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
+        img.draw_circle(target_x, target_y, 5)
+        img.draw_rectangle(blob.rect())
+
+    for blob in Rblobs:
         # print(findLength(blob.minor_axis_line())) = 90
         # print(findLength(blob.major_axis_line())) = 185
         #if findLength(blob.minor_axis_line()) > findLength(blob.major_axis_line())/3 and findLength(blob.minor_axis_line()) < findLength(blob.major_axis_line())/1.8:
-        foundBlob = blob
+        foundBlobR = blob
         target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
         target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
         img.draw_circle(target_x, target_y, 5)
@@ -286,7 +296,8 @@ while(True):
 # this finds the LAST blob, not the BEST blob. Need to update that in the future
 
     if foundBlob:
-        can.send_advanced_track_data(foundBlob.cx(), foundBlob.cy(), foundBlob.area(), 1, 100, 0)
+        can.send_advanced_track_data(foundBlobG.cx(), foundBlobG.cy(), foundBlobG.area(), 1, 100, 0)
+        can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, 100, 0)
     else:
         can.clear_advanced_track_data()     # VERY IMPORTANT TO CLEAR AND UPDATE RIO DATA
 
