@@ -1,32 +1,17 @@
-# Blob tracker for the green LED ring for turret use
-
 import sensor, image, time, math, pyb
-from pyb import CAN
 import omv
+from pyb import CAN
 
-threshold_green = 1
-threshold_red = 0
+thresh1 = (65, 99, -28, -3, 45, 85)
+thresh2 = (65, 99, -5, 5, -5, 5)
 
-# Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
-thresholds = [(45, 70, 65, 90, 45, 75), # To be tested RED
-             (50, 95, -80, -30, -10, 50)]# specific_green_threshold @ 900 exposure & 9 volts
-
-# Camera settings
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.skip_frames(time = 2000)
-sensor.set_auto_exposure(False, 5000) # 5ms exposure
-sensor.set_auto_gain(False, gain_db_ceiling=3)
+sensor.set_auto_gain(False)
 sensor.set_auto_whitebal(False)
 clock = time.clock()
-
-# LEDs for determining blob status
-red_led  = pyb.LED(1)
-green_led = pyb.LED(2)
-canbuffer = bytearray(8)
-candata = [0, 0, 0, memoryview(canbuffer)]
-
 
 class frcCAN:
 
@@ -237,7 +222,6 @@ class frcCAN:
     # Advanced Target Tracking API Class: 5
 
     # Send advanced target tracking data to RoboRio
-    # type 1 = green    type 2 = red    type 3 = blue
     def send_advanced_track_data(self, cx, cy, area, ttype, qual, skew):
         atb = bytearray(8)
         atb[0] = (cx & 0xff0) >> 4
@@ -255,60 +239,81 @@ class frcCAN:
         atb = bytearray(8)
         self.send(self.api_id(5, 1), atb)
 
-# end of class
+# POWER CELL TRACKING
+def trackPowerCells(can, img):
+    blobs = []
+    #filtering the blobs to fit our restraints in size
+    for blob in img.find_blobs([thresh1], pixels_threshold=350, area_threshold=400):
+        if blob.elongation() < 0.5:
+            img.draw_rectangle(blob.rect())
+            img.draw_cross(blob.cx(), blob.cy())
+            img.draw_keypoints([(blob.cx(), blob.cy(), int(math.degrees(blob.rotation())))], size=20)
+            blobs.append(blob)  #only add to list if passing our filter
 
-def findLength(blobData):
-    return math.sqrt(math.pow(blobData[0] - blobData[2], 2) + math.pow(blobData[1] - blobData[3], 2))
+    #limiting list side to match API and interface definition
+    slots = len(blobs)
+    if slots > 6:
+        slots = 6
 
-can = frcCAN(8)
+    #printing data for blob[i]
+    for i in range(0, slots):
+        # i = the blob in a given slot, slot being 0-6
+        can.send_track_data(i, blobs[i].cx(), blobs[i].cy(), 0, 0, 1, 100)
+
+    for j in range(slots, 6):
+        can.clear_track_data(j)
+
+# LINE TRACKING
+def trackLines(can, img):
+    lines = []
+    #filtering the blobs to fit our restraints in size
+    for blob in img.find_blobs([thresh2], pixels_threshold=350, area_threshold=400):
+        img.draw_rectangle(blob.rect())
+        line = img.get_regression([thresh2], roi=blob.rect(), area_threshold=10,
+            pixels_threshold=30, robust=True)
+        lines.append(line)  #only add to list if passing our filter
+
+    #limiting list side to match API and interface definition
+    slots = len(lines)
+    if slots > 6:
+        slots = 6
+
+    #printing data for blob[i]
+    for i in range(0, slots):
+        # i = the blob in a given slot, slot being 0-6
+        can.send_line_data(i, lines[i].x1(), lines[i].y1(), lines[i].x2(), lines[i].y2(), 2, 100)
+
+    for j in range(slots, 6):
+        can.clear_track_data(j)
+
+# Test Program Main --------------------------------------------------
+
+sensor.reset()
+sensor.set_pixformat(sensor.RGB565)
+sensor.set_framesize(sensor.QVGA)
+sensor.skip_frames(time = 2500)
+
+# Creatae our frcCAN object for interfacing with RoboRio over CAN
+can = frcCAN(9)
 
 # Set the configuration for our OpenMV frcCAN device.
-can.set_config(1, 0, 0, 0)
+can.set_config(6, 6, 0, 0)
 # Set the mode for our OpenMV frcCAN device.
 can.set_mode(1)
 
-#---------MAIN LOOP-------------
 while(True):
     can.update_frame_counter() # Update the frame counter.
-    img = sensor.snapshot()
-    foundBlob = None
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
-    Gblobs = img.find_blobs([thresholds[threshold_green]], pixels_threshold=100, area_threshold=500, merge=True)
-    Rblobs = img.find_blobs([thresholds[threshold_red]], pixels_threshold=100, area_threshold=500, merge=True)
+    img = sensor.snapshot().gamma_corr(gamma = 0.7, contrast = 1.6, brightness = 0.1)
 
-    for blob in Gblobs:
-        foundBlobG = blob
-        target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
-        target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
-        img.draw_circle(target_x, target_y, 5)
-        img.draw_rectangle(blob.rect())
-
-    for blob in Rblobs:
-        # print(findLength(blob.minor_axis_line())) = 90
-        # print(findLength(blob.major_axis_line())) = 185
-        #if findLength(blob.minor_axis_line()) > findLength(blob.major_axis_line())/3 and findLength(blob.minor_axis_line()) < findLength(blob.major_axis_line())/1.8:
-        foundBlobR = blob
-        target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
-        target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
-        img.draw_circle(target_x, target_y, 5)
-        img.draw_rectangle(blob.rect())
-
-# this finds the LAST blob, not the BEST blob. Need to update that in the future
-
-    if foundBlob:
-        can.send_advanced_track_data(foundBlobG.cx(), foundBlobG.cy(), foundBlobG.area(), 1, 100, 0)
-        can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, 100, 0)
-    else:
-        can.clear_advanced_track_data()     # VERY IMPORTANT TO CLEAR AND UPDATE RIO DATA
+    trackPowerCells(can, img)
+    trackLines(can, img)
 
     # Occasionally send config data and camera status:
     if can.get_frame_counter() % 100 == 0:
         can.send_config_data()
-        can.send_camera_status(sensor.width(), sensor.height())
+        can.send_camera_status(320, 240)
 
     pyb.delay(50)
     print("HB %d" % can.get_frame_counter())
     can.check_mode();
-
-
-

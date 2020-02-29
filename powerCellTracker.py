@@ -246,7 +246,7 @@ sensor.set_framesize(sensor.QVGA)
 sensor.skip_frames(time = 2500)
 
 # Creatae our frcCAN object for interfacing with RoboRio over CAN
-can = frcCAN(1)
+can = frcCAN(9)
 
 # Set the configuration for our OpenMV frcCAN device.
 can.set_config(1, 0, 0, 0)
