@@ -11,13 +11,15 @@ threshold_red = 0
 thresholds = [(45, 70, 65, 90, 45, 75), # To be tested RED
              (50, 95, -80, -30, -10, 50)]# specific_green_threshold @ 900 exposure & 9 volts
 
+# YELLOW OF REBEL LOGO:   Lmin = 53  Lmax = 59    Amin = -1  Amax = 12    Bmin = 32  Bmax = 44
+
 # Camera settings
 sensor.reset()
 sensor.set_pixformat(sensor.RGB565)
 sensor.set_framesize(sensor.QVGA)
 sensor.skip_frames(time = 2000)
-sensor.set_auto_exposure(False, 5000) # 5ms exposure
-sensor.set_auto_gain(False, gain_db_ceiling=3)
+sensor.set_auto_exposure(False, 3000) # 5ms exposure
+sensor.set_auto_gain(False, gain_db_ceiling=-3)
 sensor.set_auto_whitebal(False)
 clock = time.clock()
 
@@ -274,7 +276,7 @@ while(True):
     foundBlob = None
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
     Gblobs = img.find_blobs([thresholds[threshold_green]], pixels_threshold=100, area_threshold=500, merge=True)
-    Rblobs = img.find_blobs([thresholds[threshold_red]], pixels_threshold=100, area_threshold=500, merge=True)
+    #Rblobs = img.find_blobs([thresholds[threshold_red]], pixels_threshold=100, area_threshold=500, merge=True)
 
     for blob in Gblobs:
         foundBlobG = blob
@@ -282,22 +284,27 @@ while(True):
         target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
         img.draw_circle(target_x, target_y, 5)
         img.draw_rectangle(blob.rect())
+        #roi = (blob.x()-4, blob.y()-4, blob.w()+8, blob.h()+8)
+        #segs = img.find_line_segments(roi=roi, merge_distance=1, max_theta_diff=5)
 
-    for blob in Rblobs:
+        #for l in segs:
+                #img.draw_line(l.line(), color = (255, 0, 0))
+
+    #for blob in Rblobs:
         # print(findLength(blob.minor_axis_line())) = 90
         # print(findLength(blob.major_axis_line())) = 185
         #if findLength(blob.minor_axis_line()) > findLength(blob.major_axis_line())/3 and findLength(blob.minor_axis_line()) < findLength(blob.major_axis_line())/1.8:
-        foundBlobR = blob
-        target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
-        target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
-        img.draw_circle(target_x, target_y, 5)
-        img.draw_rectangle(blob.rect())
+        #foundBlobR = blob
+        #target_x = int((blob.major_axis_line()[0] + blob.major_axis_line()[2]) / 2)
+        #target_y = int(min(blob.minor_axis_line()[1], blob.minor_axis_line()[3]))
+        #img.draw_circle(target_x, target_y, 5)
+        #mg.draw_rectangle(blob.rect())
 
 # this finds the LAST blob, not the BEST blob. Need to update that in the future
 
     if foundBlob:
         can.send_advanced_track_data(foundBlobG.cx(), foundBlobG.cy(), foundBlobG.area(), 1, 100, 0)
-        can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, 100, 0)
+        #can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, 100, 0)
     else:
         can.clear_advanced_track_data()     # VERY IMPORTANT TO CLEAR AND UPDATE RIO DATA
 
