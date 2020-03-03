@@ -9,7 +9,7 @@ threshold_red = 0
 
 # Color Tracking Thresholds (L Min, L Max, A Min, A Max, B Min, B Max)
 thresholds = [(45, 70, 65, 90, 45, 75), # To be tested RED
-             (50, 95, -80, -30, -10, 50)]# specific_green_threshold @ 900 exposure & 9 volts
+             (50, 99, -80, -30, -10, 50)]# specific_green_threshold @ 900 exposure & 9 volts
 
 # YELLOW OF REBEL LOGO:   Lmin = 53  Lmax = 59    Amin = -1  Amax = 12    Bmin = 32  Bmax = 44
 
@@ -275,7 +275,7 @@ while(True):
     img = sensor.snapshot()
     foundBlob = None
     can.send_heartbeat()       # Send the heartbeat message to the RoboRio
-    Gblobs = img.find_blobs([thresholds[threshold_green]], pixels_threshold=100, area_threshold=500, merge=True)
+    Gblobs = img.find_blobs([thresholds[threshold_green]], pixels_threshold=50, area_threshold=500, merge=True)
     #Rblobs = img.find_blobs([thresholds[threshold_red]], pixels_threshold=100, area_threshold=500, merge=True)
 
     for blob in Gblobs:
