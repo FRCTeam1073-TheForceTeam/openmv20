@@ -8,4 +8,4 @@ def list_creator(path):
     return frame_list
 
 images = list_creator('/Users/katherine/Documents/GitHub/openmv20/WeekZeroExamples/Week0Videos/GOODMatch0.mjpeg')
-print(images)
+print("images saved!")
