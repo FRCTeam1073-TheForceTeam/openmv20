@@ -262,6 +262,21 @@ class frcCAN:
 def findLength(blobData):
     return math.sqrt(math.pow(blobData[0] - blobData[2], 2) + math.pow(blobData[1] - blobData[3], 2))
 
+
+def score(blob):
+    qual = 100
+    if bob.area() < 250:    # too far away from target
+        qual = qual - 50
+    if blob.area() > 20000: # too close to target
+        qual = qual - 75
+    if blob.x =< 3:         # too far left/at edge of the image
+        qual = qual - 75
+    if blob.c => 317:       # too far right/at edge of the image
+        qual = qual - 75
+    else:
+        qual = 100
+    return qual
+
 can = frcCAN(8)
 
 # Set the configuration for our OpenMV frcCAN device.
@@ -303,8 +318,8 @@ while(True):
 # this finds the LAST blob, not the BEST blob. Need to update that in the future
 
     if foundBlob:
-        can.send_advanced_track_data(foundBlobG.cx(), foundBlobG.cy(), foundBlobG.area(), 1, 100, 0)
-        #can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, 100, 0)
+        can.send_advanced_track_data(foundBlobG.cx(), foundBlobG.cy(), foundBlobG.area(), 1, score(blob), 0)
+        #can.send_advanced_track_data(foundBlobR.cx(), foundBlobR.cy(), foundBlobR.area(), 2, score(blob), 0)
     else:
         can.clear_advanced_track_data()     # VERY IMPORTANT TO CLEAR AND UPDATE RIO DATA
 
