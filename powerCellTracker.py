@@ -253,6 +253,15 @@ can.set_config(1, 0, 0, 0)
 # Set the mode for our OpenMV frcCAN device.
 can.set_mode(1)
 
+def list_creator(path):
+    frame_list=[]
+    video = image.ImageReader(path);
+    while(video.next_frame([copy_to_fb=True[, loop=False]]) != None):
+       frame_list.append(video.next_frame([copy_to_fb=True[, loop=False]]))
+       return frame_list
+
+list_creator('Week0Videos/GOODMatch0.mjpeg')
+
 while(True):
     can.update_frame_counter() # Update the frame counter.
 
